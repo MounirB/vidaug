@@ -1,7 +1,22 @@
 from vidaug import augmentors as va
 import cv2
 import numpy as np
-import os
+
+def write_video(output, images):
+    """
+    Outputs a video file from a list of images
+    """
+    # Define the video shape
+    width = images[0].shape[0]
+    height = images[0].shape[1]
+    # Define the codec and create VideoWriter object
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Be sure to use lower case
+    out = cv2.VideoWriter(output, fourcc, 20.0, (width, height))
+    # Write out frame to video
+    for image in images:
+        out.write(image)
+    # Release everything if job is finished
+    out.release()
 
 
 def select_frames(frames, frames_per_video):
@@ -47,6 +62,10 @@ def get_rgb_videoclip(rgb_videoclip, frames_per_video, frame_height, frame_width
     # and to resize them according to the decided setup of frame_height/width
     selected_frames = select_frames(frames, frames_per_video)
 
+    # Application of data augmentation
+    seq = augmentor(selected_frames[0].shape)
+    selected_frames = seq(selected_frames)
+
     # Resizing frames to fit the decided setup
     resized_selected_frames = list()
     for selected_frame in selected_frames:
@@ -56,38 +75,33 @@ def get_rgb_videoclip(rgb_videoclip, frames_per_video, frame_height, frame_width
     # return frame, video_clip
     return np.asarray(resized_selected_frames)
 
-def write_video(output, images):
+def augmentor(frame_shape):
     """
-    Outputs a video file from a list of images
+    Prepares the video data augmentator by applying some augmentations to it
     """
-    # Define the video shape
-    width = images[0].shape[0]
-    height = images[0].shape[1]
-    # Define the codec and create VideoWriter object
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Be sure to use lower case
-    out = cv2.VideoWriter(output, fourcc, 20.0, (width, height))
-    # Write out frame to video
-    for image in images:
-        out.write(image)
-    # Release everything if job is finished
-    out.release()
+    height = frame_shape[0]
+    width = frame_shape[1]
+    sometimes = lambda aug: va.Sometimes(0.5, aug)  # Used to apply augmentor with 50% probability
+
+    seq = va.Sequential([
+        # randomly crop video with a size of (height-60 x width-60)
+        # height and width are in this order because the instance is a ndarray
+        sometimes(va.RandomCrop(size=(height - 60, width - 60))),
+        sometimes(va.HorizontalFlip()),  # horizontally flip
+        sometimes(va.Salt(ratio=100)),  # salt
+        sometimes(va.Pepper(ratio=100))  # pepper
+    ])
+    return seq
 
 if __name__ == "__main__":
-    # Prepare the data augmentor
-    sometimes = lambda aug: va.Sometimes(0.5, aug) # Used to apply augmentor with 50% probability
-    seq = va.Sequential([
-        va.RandomCrop(size=(200, 200)), # randomly crop video with a size of (240 x 180)
-        va.RandomRotate(degrees=10), # randomly rotates the video with a degree randomly chosen from [-10, 10]
-        sometimes(va.HorizontalFlip()) # horizontally flip the video with 50% probability
-    ])
-
     # Video arguments
     rgb_videoclip = "some_random_video.mp4"
     frames_per_video = 20
     frame_height = frame_width = 224
 
     # Apply video data augmentation
-    video_aug_filename = "some_random_video_augmented.mp4"
-    video = get_rgb_videoclip(rgb_videoclip, frames_per_video, frame_height, frame_width)
-    video_aug = seq(video)
-    write_video(video_aug_filename, video_aug)
+    iterations = range(0, 20)
+    for iteration in iterations:
+        video_aug_filename = "some_random_video_augmented_"+str(iteration)+".mp4"
+        video = get_rgb_videoclip(rgb_videoclip, frames_per_video, frame_height, frame_width)
+        write_video(video_aug_filename, video)
