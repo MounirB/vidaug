@@ -32,7 +32,6 @@ def select_frames(frames, frames_per_video):
         step = 1
     first_frames_selection = frames[::step]
     final_frames_selection = first_frames_selection[:frames_per_video]
-    final_frames_selection = frames
 
     return final_frames_selection
 
