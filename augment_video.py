@@ -1,6 +1,7 @@
 from vidaug import augmentors as va
 import cv2
 import numpy as np
+import time
 
 def write_video(output, images):
     """
@@ -31,6 +32,7 @@ def select_frames(frames, frames_per_video):
         step = 1
     first_frames_selection = frames[::step]
     final_frames_selection = first_frames_selection[:frames_per_video]
+    final_frames_selection = frames
 
     return final_frames_selection
 
@@ -52,14 +54,15 @@ def get_rgb_videoclip(rgb_videoclip, frames_per_video, frame_height, frame_width
     ret = True
     while (True and ret):
         ret, frame = cap.read()
-
-        frames.append(frame)
+        if ret:
+            frames.append(frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     cap.release()
 
     # The following operations are intended to select a precise number of frames
     # and to resize them according to the decided setup of frame_height/width
+
     selected_frames = select_frames(frames, frames_per_video)
 
     # Application of data augmentation
@@ -95,13 +98,19 @@ def augmentor(frame_shape):
 
 if __name__ == "__main__":
     # Video arguments
-    rgb_videoclip = "some_random_video.mp4"
+    rgb_videoclip = "some_random_videoclip.mp4"
     frames_per_video = 20
     frame_height = frame_width = 224
+    iterations_number = 1
+    start = time.time()
 
     # Apply video data augmentation
-    iterations = range(0, 20)
+    iterations = range(0, iterations_number)
     for iteration in iterations:
         video_aug_filename = "some_random_video_augmented_"+str(iteration)+".mp4"
         video = get_rgb_videoclip(rgb_videoclip, frames_per_video, frame_height, frame_width)
         write_video(video_aug_filename, video)
+    end = time.time()
+
+    # Compute elapsed time
+    print(end-start)
